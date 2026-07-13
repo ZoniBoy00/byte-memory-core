@@ -12,13 +12,14 @@ from bmc.manage import _handle_forget, _handle_status, _handle_tier_move, _handl
 
 SCHEMA_SEARCH = {
     "name": "bmc_search",
-    "description": "Search across memory tiers using hybrid FTS5 + n-gram TF-IDF. Returns ranked results with scores. Falls back to semantic-lite matching when exact keywords fail.",
+    "description": "Search across memory sources using hybrid FTS5 + n-gram TF-IDF. Supports local BMC database, o2b vault, and Honcho. Returns ranked, merged results.",
     "parameters": {
         "type": "object",
         "properties": {
             "query": {"type": "string", "description": "Search query in natural language or keywords"},
-            "tiers": {"type": "array", "items": {"type": "string", "enum": TIER_ORDER}, "description": "Tiers to search (default: all)"},
-            "limit": {"type": "integer", "description": "Max results per tier (default: 5, max: 20)"},
+            "sources": {"type": "array", "items": {"type": "string", "enum": ["bmc", "o2b"]}, "description": "Sources to search (default: ['bmc', 'o2b'])"},
+            "tiers": {"type": "array", "items": {"type": "string", "enum": TIER_ORDER}, "description": "BMC tiers to search (default: all)"},
+            "limit": {"type": "integer", "description": "Max results per source (default: 5, max: 20)"},
             "min_score": {"type": "number", "description": "Minimum score threshold 0.0-1.0 (default: 0)"},
         },
         "required": ["query"],
