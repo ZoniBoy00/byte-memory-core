@@ -17,6 +17,8 @@ from bmc.tokenize import tokenize
 from bmc.config import TIER_ORDER
 
 O2B_VAULT = "/opt/Byte Vault"
+HONCHO_API = "http://localhost:8000"
+HONCHO_WORKSPACE = "7LNavpmLHT72jIaqI0Sbc"
 
 
 def _search_o2b(query: str, limit: int = 5) -> List[dict]:
@@ -68,6 +70,41 @@ def _search_o2b(query: str, limit: int = 5) -> List[dict]:
             })
 
         return entries[:limit]
+
+    except Exception:
+        return []
+
+
+def _search_honcho(query: str, limit: int = 5) -> List[dict]:
+    """Search Honcho memory provider via local API."""
+    try:
+        import urllib.request
+        import urllib.error
+
+        data = json.dumps({"query": query, "limit": limit}).encode()
+        req = urllib.request.Request(
+            f"{HONCHO_API}/v3/workspaces/{HONCHO_WORKSPACE}/peers/user/search",
+            data=data,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            results = json.loads(resp.read())
+
+        if not results or not isinstance(results, list):
+            return []
+
+        entries = []
+        for r in results[:limit]:
+            content = r.get("content") or r.get("text") or r.get("message") or str(r)
+            score = r.get("score") or r.get("relevance") or 0.5
+            entries.append({
+                "source": "honcho",
+                "content": str(content)[:300],
+                "detail": r.get("session_id", ""),
+                "score": round(float(score), 4),
+            })
+        return entries
 
     except Exception:
         return []
@@ -232,6 +269,12 @@ def _handle_search(args, **kwargs):
     if "o2b" in sources:
         o2b_results = _search_o2b(query, limit)
         for r in o2b_results:
+            all_results.append(r)
+
+    # 3) Search Honcho
+    if "honcho" in sources:
+        honcho_results = _search_honcho(query, limit)
+        for r in honcho_results:
             all_results.append(r)
 
     # Sort all results by score descending

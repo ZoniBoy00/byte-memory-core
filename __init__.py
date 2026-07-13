@@ -17,7 +17,7 @@ SCHEMA_SEARCH = {
         "type": "object",
         "properties": {
             "query": {"type": "string", "description": "Search query in natural language or keywords"},
-            "sources": {"type": "array", "items": {"type": "string", "enum": ["bmc", "o2b"]}, "description": "Sources to search (default: ['bmc', 'o2b'])"},
+            "sources": {"type": "array", "items": {"type": "string", "enum": ["bmc", "o2b", "honcho"]}, "description": "Sources to search (default: ['bmc', 'o2b'])"},
             "tiers": {"type": "array", "items": {"type": "string", "enum": TIER_ORDER}, "description": "BMC tiers to search (default: all)"},
             "limit": {"type": "integer", "description": "Max results per source (default: 5, max: 20)"},
             "min_score": {"type": "number", "description": "Minimum score threshold 0.0-1.0 (default: 0)"},
