@@ -1,0 +1,12 @@
+name: byte-memory-core
+version: 1.0.0
+description: Local vector-indexed memory with BEAM tiers (Working/Episodic/Scratchpad) — semantic-lite FTS5 search, importance scoring, and auto-archival for o2b.
+author: "Byte"
+provides_tools:
+  - bmc_search
+  - bmc_store
+  - bmc_remember
+  - bmc_forget
+  - bmc_status
+  - bmc_tier_move
+  - bmc_reindex
