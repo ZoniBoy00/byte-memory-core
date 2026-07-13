@@ -84,5 +84,12 @@ def test_search_empty():
 
 
 def test_tfidf_fallback():
-    r = json.loads(_handle_search({"query": "semantec matchung", "limit": 5}))
+    r = json.loads(mod._handle_search({"query": "semantec matchung", "limit": 5}))
     assert r["status"] == "success"
+
+
+def test_multi_source():
+    """Search with sources=["bmc", "o2b"] returns results from both."""
+    r = json.loads(_handle_search({"query": "test", "sources": ["bmc"], "limit": 5}))
+    assert r["status"] == "success"
+    assert all(res["source"] == "bmc" for res in r["results"])
