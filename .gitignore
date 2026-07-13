@@ -4,6 +4,7 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+.pytest_cache/
 
 # OS
 .DS_Store
@@ -13,8 +14,17 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+*.swo
 
-# Test DB (created at runtime)
-store.db
-store.db-wal
-store.db-shm
+# Local runtime data (created by the plugin)
+store.db*
+*.db
+*.db-wal
+*.db-shm
+
+# Environment / secrets
+.env
+.env.*
+*.pem
+*.key
+credentials*

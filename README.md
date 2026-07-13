@@ -1,113 +1,98 @@
-# Byte Memory Core — BEAM-tiered local memory for Hermes
+# Byte Memory Core — BEAM-tiered local memory for Hermes Agent
 
-> **Local vector-indexed memory with Working/Episodic/Scratchpad tiers.**  
-> Semantic-lite search (FTS5 + char n-gram TF-IDF), importance scoring, and auto-archival.  
-> Integrates with o2b or any Hermes knowledge vault.
+> **Working · Episodic · Scratchpad** — local, persistent, tiered memory with hybrid search (FTS5 + n-gram TF-IDF), importance scoring, and automatic pruning. No cloud, no GPU, no ML models.
 
+[![Tests](https://github.com/ZoniBoy00/byte-memory-core/actions/workflows/test.yml/badge.svg)](https://github.com/ZoniBoy00/byte-memory-core/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Hermes Agent](https://img.shields.io/badge/Hermes%20Agent-plugin-0891b2)](https://hermes-agent.nousresearch.com/)
 
 ---
 
-## 🧠 What It Is
+## Why?
 
-`byte-memory-core` adds a **local, persistent, tiered memory** to Hermes Agent. It stores facts in SQLite with FTS5 indexing, scores them by relevance + recency + importance, and automatically prunes old low-value data. No cloud, no vector database, no GPU needed.
+Hermes Agent's built-in memory works, but it's flat — everything is equally important. `byte-memory-core` adds **structure and intelligence**:
 
-### BEAM Memory Tiers
-
-| Tier | Weight | TTL | Cap | Use Case |
-|------|--------|-----|-----|----------|
-| **Working** 🔄 | 3× | 24h | 500 facts | Recent conversation context, temporary notes |
-| **Episodic** 📚 | 2× | 30 days | 2000 facts | Important learnings, decisions, preferences |
-| **Scratchpad** 📝 | 1× | — | 300 facts | In-progress thoughts, follow-ups, half-baked ideas |
-
-Tiers are **scored differently** — Working favours recency, Episodic favours importance, Scratchpad is lightweight storage. Facts auto-prune when they exceed tier caps (oldest+lowest-score removed first).
-
-### Search That Actually Works
-
-Hybrid search combining **three signals**:
-
-1. **FTS5 (SQLite full-text search)** — fast keyword matching with BM25 ranking
-2. **Char n-gram TF-IDF** — catches typos, partial matches, and related terms without an ML model
-3. **Recency + frequency** — facts you've accessed recently or often rank higher
-
-Results are blended into a single score (0–1) and sorted by relevance.
+- **Three tiers** mimic how human memory works: working (today), episodic (important), scratchpad (ideas)
+- **Hybrid search** catches what keyword search misses: typos, partial matches, and related terms via char n-gram TF-IDF
+- **Auto-pruning** removes old, low-value facts before they bloat your database
+- **Local-only** — SQLite + numpy, zero external services, zero network
 
 ---
 
-## 📦 Installation
+## BEAM Memory Tiers
 
-### 1. Clone into Hermes plugins
+| Tier | Decay | Cap | Use Case |
+|------|-------|-----|----------|
+| **Working** 🔄 | 24 hours | 500 | Recent context, temporary notes |
+| **Episodic** 📚 | 30 days | 2000 | Important learnings, decisions, user preferences |
+| **Scratchpad** 📝 | 7 days | 300 | Half-baked ideas, follow-ups, todo items |
+
+Each fact is scored by a hybrid of: FTS5 relevance, TF-IDF n-gram similarity, recency, access frequency, tier weight, and manual importance. Low-scoring facts are pruned first.
+
+---
+
+## Installation
 
 ```bash
 cd ~/.hermes/plugins
 git clone https://github.com/ZoniBoy00/byte-memory-core.git
-```
-
-### 2. Enable the plugin
-
-```bash
 hermes plugins enable byte-memory-core
 ```
 
-Restart Hermes or start a new session.
-
-### 3. Verify it's working
-
-```
-bmc_status
-```
-
-You should see empty tiers, ready to fill.
+Restart Hermes or start a new session. Verify with `bmc_status`.
 
 ---
 
-## 🛠️ Tools
+## Tools
 
 ### `bmc_store` — Store facts
+
+Save one or more facts to a specific tier:
 
 ```json
 {
   "facts": [
-    "QBox-resurssit kannattaa tarkistaa GitHubista, luottaa vanhoihin listoihin",
-    "time-gap plugin lisää aikatietoisuuden Hermekseen"
+    "Use FTS5 with n-gram fallback for resilient search",
+    "Prefer episodic tier for long-term project knowledge"
   ],
   "tier": "episodic",
-  "source": "task-reflection",
+  "source": "architecture-decision",
   "importance": 0.85
 }
 ```
 
 ### `bmc_search` — Find facts
 
+Hybrid search across tiers — finds results even with typos:
+
 ```json
 {
-  "query": "QBox resources outdated lists",
-  "tiers": ["working", "episodic"],
+  "query": "ft5 ngrm fallback",
+  "tiers": ["episodic"],
   "limit": 5
 }
 ```
 
-Returns ranked results with scores, tier, and access stats.
+Returns ranked results with scores. The n-gram TF-IDF fallback activates when FTS5 returns no matches.
 
 ### `bmc_remember` — Quick save
 
+Single-line save to Working tier for rapid context capture:
+
 ```json
 {
-  "fact": "Tarkista QBox-resurssit GitHubista ennen luottamista",
+  "fact": "The deployment config was moved to /etc/hermes/",
   "source": "conversation"
 }
 ```
 
-Saves to Working tier with one line.
-
-### `bmc_forget` — Delete a fact
+### `bmc_forget` — Delete
 
 ```json
 {"fact_id": 42}
 ```
 
-### `bmc_tier_move` — Promote or demote
+### `bmc_tier_move` — Promote / demote
 
 ```json
 {
@@ -116,88 +101,94 @@ Saves to Working tier with one line.
 }
 ```
 
-Great for promoting working → episodic after you confirm a finding.
+### `bmc_status` — Dashboard
 
-### `bmc_status` — Memory dashboard
+Returns counts per tier, average importance, recent entries, database size.
 
-No arguments. Returns counts per tier, average importance, recent facts, DB size.
+### `bmc_reindex` — Rebuild
 
-### `bmc_reindex` — Rebuild search index
-
-Run after bulk imports or if search seems off.
+Rebuilds the FTS5 index. Run after bulk imports.
 
 ---
 
-## 🔧 Architecture
+## Example Workflows
+
+### Capture and promote project knowledge
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                   Hermes Agent                       │
-│  ┌──────────────────────────────────────────────┐   │
-│  │         byte-memory-core plugin               │   │
-│  │                                              │   │
-│  │  ┌─────────┐  ┌─────────┐  ┌────────────┐   │   │
-│  │  │ Working  │  │Episodic │  │ Scratchpad  │   │   │
-│  │  │ (24h)    │  │(30d)    │  │ (notes)     │   │   │
-│  │  └────┬─────┘  └────┬────┘  └──────┬─────┘   │   │
-│  │       │              │              │          │   │
-│  │  ┌────┴──────────────┴──────────────┴────┐     │   │
-│  │  │      SQLite + FTS5 + numpy TF-IDF      │     │   │
-│  │  └───────────────────┬────────────────────┘     │   │
-│  └──────────────────────┼──────────────────────────┘   │
-│                         │                              │
-│              ┌──────────▼──────────┐                   │
-│              │   o2b Brain vault   │                   │
-│              │  (persistent store)  │                   │
-│              └─────────────────────┘                   │
-└─────────────────────────────────────────────────────┘
+# During project work:
+bmc_remember("Switched from REST to WebSocket for real-time feed")
+
+# After confirming it's important:
+# Use bmc_search to find the fact ID, then:
+bmc_tier_move({"fact_ids": [42], "target_tier": "episodic"})
 ```
 
-### Scoring formula
+### Find context across sessions
 
 ```
-score = 0.35 × FTS5_rank
-      + 0.25 × recency
-      + 0.15 × tier_weight
-      + 0.10 × access_factor
-      + 0.15 × importance
+# Next day, different session:
+bmc_search("webscoket reel-tim")
+# → Still finds "WebSocket for real-time feed" via n-gram matching
+```
+
+### Quick context handoff
+
+```
+# Before switching tasks:
+bmc_remember("Mid-way through authentication refactor — SessionManager needs token refresh logic")
+
+# Later:
+bmc_search({"query": "where was I with auth", "tiers": ["working", "scratchpad"]})
+```
+
+---
+
+## Architecture
+
+```
+┌──────────────────────────────────────────────────┐
+│              Hermes Agent                         │
+│  ┌───────────────────────────────────────────┐   │
+│  │          byte-memory-core plugin            │   │
+│  │  ┌──────┐  ┌──────────┐  ┌────────────┐   │   │
+│  │  │Work. │  │ Episodic │  │ Scratchpad  │   │   │
+│  │  └──┬───┘  └────┬─────┘  └──────┬──────┘   │   │
+│  │     └─────┬─────┴──────┬────────┘           │   │
+│  │           │  SQLite + FTS5 + numpy          │   │
+│  └───────────┴─────────────────────────────────┘   │
+└──────────────────────────────────────────────────┘
+```
+
+### Scoring
+
+```
+score =  0.35 × FTS5/TF-IDF relevance
+        + 0.25 × recency (age decay)
+        + 0.15 × tier weight
+        + 0.10 × access frequency
+        + 0.15 × manual importance
 ```
 
 ### Dependencies
 
-- **Python 3.11+** (sqlite3 with FTS5)
-- **numpy** — lightweight TF-IDF computation
-- Zero external services, zero network required at inference time
+- **Python 3.11+** (stdlib: sqlite3, json, re, math)
+- **numpy** — lightweight TF-IDF cosine similarity
 
 ---
 
-## 🚀 Workflow Ideas
+## Tests
 
-### Daily context retention
-```
-bmc_store(tier="working", facts=["vaihdoin 500W PSU:n -> 850W", "uus GPU tulossa tiistaina"])
-→ Stays relevant for 24 hours, then drops off
+```bash
+python3 -m pytest tests/ -v
 ```
 
-### Project knowledge promotion
-```
-# After completing a task:
-bmc_store(tier="episodic", facts=[learnings], source="task-X", importance=0.9)
-→ Persists for 30 days, always scores high
-```
-
-### Quick todo / follow-up
-```
-bmc_remember("tarkista se homma mitä puhuttiin siitä pluginista")
-→ Lands in scratchpad, won't clutter working/episodic
-```
+22 tests covering tokenization, scoring, and full integration flow.
 
 ---
 
-## 📄 License
+## License
 
-MIT — free to use, modify, share. Attribution appreciated.
-
----
+MIT — free to use, modify, and share.
 
 *Built for Hermes Agent. Part of the Byte AI assistant ecosystem.*
