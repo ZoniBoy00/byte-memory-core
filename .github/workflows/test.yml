@@ -11,6 +11,6 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install dependencies
-        run: pip install numpy
+        run: pip install numpy pytest
       - name: Run tests
         run: python3 -m pytest tests/ -v
