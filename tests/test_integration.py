@@ -84,7 +84,7 @@ def test_search_empty():
 
 
 def test_tfidf_fallback():
-    r = json.loads(mod._handle_search({"query": "semantec matchung", "limit": 5}))
+    r = json.loads(_handle_search({"query": "semantec matchung", "limit": 5}))
     assert r["status"] == "success"
 
 

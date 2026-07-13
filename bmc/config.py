@@ -41,3 +41,13 @@ DEFAULT_IMPORTANCE = {
     "episodic": 0.8,
     "scratchpad": 0.3,
 }
+
+# External search sources
+O2B_VAULT = os.environ.get("O2B_VAULT_PATH", "")
+"""Path to o2b vault directory. Set via env var or leave empty to disable."""
+
+HONCHO_API = os.environ.get("HONCHO_API_URL", "")
+"""Honcho API base URL (e.g. http://localhost:8000). Empty = disabled."""
+
+HONCHO_WORKSPACE = os.environ.get("HONCHO_WORKSPACE_ID", "")
+"""Honcho workspace ID. Required when HONCHO_API is set."""

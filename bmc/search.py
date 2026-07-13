@@ -14,16 +14,12 @@ from typing import Dict, List, Optional
 import numpy as np
 
 from bmc.tokenize import tokenize
-from bmc.config import TIER_ORDER
-
-O2B_VAULT = "/opt/Byte Vault"
-HONCHO_API = "http://localhost:8000"
-HONCHO_WORKSPACE = "7LNavpmLHT72jIaqI0Sbc"
+from bmc.config import TIER_ORDER, O2B_VAULT, HONCHO_API, HONCHO_WORKSPACE
 
 
 def _search_o2b(query: str, limit: int = 5) -> List[dict]:
     """Search o2b vault via CLI and parse results."""
-    if not os.path.isdir(O2B_VAULT):
+    if not O2B_VAULT or not os.path.isdir(O2B_VAULT):
         return []
 
     try:
@@ -77,6 +73,8 @@ def _search_o2b(query: str, limit: int = 5) -> List[dict]:
 
 def _search_honcho(query: str, limit: int = 5) -> List[dict]:
     """Search Honcho memory provider via local API."""
+    if not HONCHO_API or not HONCHO_WORKSPACE:
+        return []
     try:
         import urllib.request
         import urllib.error
