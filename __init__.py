@@ -4,6 +4,13 @@ Splits memory into three tiers with hybrid FTS5 + TF-IDF search,
 importance scoring, and automatic pruning.
 """
 
+import sys
+from pathlib import Path
+# Ensure plugin dir is on sys.path so bmc/ subpackage resolves
+_plugin_dir = str(Path(__file__).resolve().parent)
+if _plugin_dir not in sys.path:
+    sys.path.insert(0, _plugin_dir)
+
 from bmc.config import TIER_ORDER, TIER_CAPS, TIER_WEIGHTS
 from bmc.database import _get_db, _auto_prune
 from bmc.search import _tfidf_score, _build_idf_cache, _handle_search
