@@ -183,7 +183,7 @@ score =  0.35 × FTS5/TF-IDF relevance
 python3 -m pytest tests/ -v
 ```
 
-22 tests covering tokenization, scoring, and full integration flow.
+45 tests covering tokenization, scoring, store, manage, and full integration.
 
 ---
 
