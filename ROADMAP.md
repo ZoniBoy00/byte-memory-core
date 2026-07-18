@@ -6,6 +6,7 @@ Goals and plans for upcoming versions. Listed by priority — top to bottom.
 
 - [ ] **Auto-promotion** — when a Working fact is frequently accessed (access_count > 3), automatically promote it to Episodic tier before the 24h TTL expires. Prevents accidental loss of important context.
 - [ ] **Deduplication** — before storing a fact, check FTS5 for an existing match. If a high-similarity fact exists (>80% TF-IDF score), update its access_count and importance instead of creating a duplicate.
+- [ ] **Auto-reindex** — `bmc-maintain` cron triggers `bmc_reindex` weekly to keep the FTS5 index healthy. Prevents silent performance degradation on large databases.
 - [ ] **Bulk store optimisation** — batch-insert FTS5 rows (currently inserts one at a time).
 
 ## v2.3.0 — Tags & metadata
