@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "byte-memory-core"
+version = "2.1.0"
+description = "Local vector-indexed memory with BEAM tiers (Working/Episodic/Scratchpad) — FTS5 search, importance scoring, and auto-pruning for Hermes agents."
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Byte", email = "byte@joni.fi"}
+]
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.24.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8.0"]
+
+[tool.setuptools.packages.find]
+include = ["bmc*"]

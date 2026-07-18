@@ -4,6 +4,7 @@ import json
 import math
 import os
 import re
+import shutil
 import subprocess
 import time
 from collections import Counter
@@ -11,7 +12,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
-import numpy as np
+try:
+    import numpy as np
+except ImportError:
+    np = None  # type: ignore[assignment]
 
 from bmc.tokenize import tokenize
 from bmc.config import TIER_ORDER, O2B_VAULT, HONCHO_API, HONCHO_WORKSPACE
@@ -23,9 +27,10 @@ def _search_o2b(query: str, limit: int = 5) -> List[dict]:
         return []
 
     try:
-        bun_path = os.path.expanduser("~/.bun/bin/bun")
+        bun_path = os.environ.get("BUN_PATH") or shutil.which("bun") or os.path.expanduser("~/.bun/bin/bun")
         env = os.environ.copy()
-        env["PATH"] = f"{os.path.expanduser('~/.bun/bin')}:{env.get('PATH', '')}"
+        bun_dir = str(Path(bun_path).parent)
+        env["PATH"] = f"{bun_dir}:{env.get('PATH', '')}"
 
         result = subprocess.run(
             ["o2b", "search", "--vault", O2B_VAULT, query],
@@ -115,8 +120,7 @@ def _tfidf_score(
 ) -> float:
     """Cosine similarity between query and document using TF-IDF vectors.
 
-    Only n-grams present in the query are evaluated, making this fast
-    even for large document collections.
+    Uses numpy when available, otherwise falls back to pure-Python.
     """
     if not query_tokens or not doc_tokens:
         return 0.0
@@ -124,19 +128,30 @@ def _tfidf_score(
     q_counts = Counter(query_tokens)
     d_counts = Counter(doc_tokens)
 
-    q_vec = np.array([
-        q_counts.get(t, 0) * idf_cache.get(t, 1.0) for t in query_tokens
-    ])
-    d_vec = np.array([
-        d_counts.get(t, 0) * idf_cache.get(t, 1.0) for t in query_tokens
-    ])
+    if np is not None:
+        q_vec = np.array([
+            q_counts.get(t, 0) * idf_cache.get(t, 1.0) for t in query_tokens
+        ])
+        d_vec = np.array([
+            d_counts.get(t, 0) * idf_cache.get(t, 1.0) for t in query_tokens
+        ])
 
-    norm_q = np.linalg.norm(q_vec)
-    norm_d = np.linalg.norm(d_vec)
+        norm_q = np.linalg.norm(q_vec)
+        norm_d = np.linalg.norm(d_vec)
+        if norm_q == 0 or norm_d == 0:
+            return 0.0
+        return float(np.dot(q_vec, d_vec) / (norm_q * norm_d))
+
+    # Pure-Python fallback
+    q_vec = [q_counts.get(t, 0) * idf_cache.get(t, 1.0) for t in query_tokens]
+    d_vec = [d_counts.get(t, 0) * idf_cache.get(t, 1.0) for t in query_tokens]
+
+    dot = sum(a * b for a, b in zip(q_vec, d_vec))
+    norm_q = math.sqrt(sum(a * a for a in q_vec))
+    norm_d = math.sqrt(sum(b * b for b in d_vec))
     if norm_q == 0 or norm_d == 0:
         return 0.0
-
-    return float(np.dot(q_vec, d_vec) / (norm_q * norm_d))
+    return dot / (norm_q * norm_d)
 
 
 def _build_idf_cache(conn) -> Dict[str, float]:
@@ -188,18 +203,24 @@ def _handle_search(args, **kwargs):
                 if tier not in TIER_ORDER:
                     continue
 
-                safe_query = query.replace('"', '""')
-                fts_rows = conn.execute(
-                    """SELECT f.id, f.tier, f.content, f.source, f.importance,
-                              f.created_at, f.accessed_at, f.access_count, rank
-                       FROM facts_fts
-                       JOIN facts f ON facts_fts.rowid = f.id
-                       WHERE facts_fts MATCH ?
-                         AND f.tier = ?
-                       ORDER BY rank
-                       LIMIT ?""",
-                    (safe_query, tier, limit * 2),
-                ).fetchall()
+                # Sanitize query for FTS5 MATCH — strip special chars,
+                # wrap each word as a bare term to avoid syntax errors
+                fts5_terms = [w for w in re.findall(r'[a-zA-Z0-9\x80-\xff]+', query) if len(w) >= 2]
+                if fts5_terms:
+                    safe_query = " AND ".join(fts5_terms)
+                    fts_rows = conn.execute(
+                        """SELECT f.id, f.tier, f.content, f.source, f.importance,
+                                  f.created_at, f.accessed_at, f.access_count, rank
+                           FROM facts_fts
+                           JOIN facts f ON facts_fts.rowid = f.id
+                           WHERE facts_fts MATCH ?
+                             AND f.tier = ?
+                           ORDER BY rank
+                           LIMIT ?""",
+                        (safe_query, tier, limit * 2),
+                    ).fetchall()
+                else:
+                    fts_rows = []
 
                 if not fts_rows:
                     fallback = conn.execute(
@@ -251,14 +272,15 @@ def _handle_search(args, **kwargs):
                                 "id": row["id"],
                             })
 
-                # Update access counters for BMC results
-                bmc_results = [r for r in all_results if r["source"] == "bmc"]
-                for r in bmc_results:
-                    conn.execute(
-                        "UPDATE facts SET accessed_at=?, access_count=access_count+1 WHERE id=?",
-                        (time.time(), r["id"]),
-                    )
-                conn.commit()
+                # Update access counters only for meaningful results
+                if all_results:
+                    bmc_results = [r for r in all_results if r["source"] == "bmc"]
+                    for r in bmc_results:
+                        conn.execute(
+                            "UPDATE facts SET accessed_at=?, access_count=access_count+1 WHERE id=?",
+                            (time.time(), r["id"]),
+                        )
+                    conn.commit()
 
         finally:
             conn.close()

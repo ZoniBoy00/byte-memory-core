@@ -4,13 +4,13 @@ import sqlite3
 import time
 from typing import Optional
 
-from bmc.config import DB_DIR, DB_PATH, TIER_CAPS, TIER_ORDER
+import bmc.config
 
 
 def _get_db() -> sqlite3.Connection:
     """Open (or create) the local SQLite database with FTS5 support."""
-    DB_DIR.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH))
+    bmc.config.DB_DIR.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(bmc.config.DB_PATH))
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA synchronous=NORMAL")
@@ -48,7 +48,7 @@ def _auto_prune(conn: sqlite3.Connection, tier: str) -> None:
 
     Deletion order: lowest importance first, then oldest.
     """
-    cap = TIER_CAPS.get(tier, 500)
+    cap = bmc.config.TIER_CAPS.get(tier, 500)
     count = conn.execute(
         "SELECT COUNT(*) FROM facts WHERE tier=?", (tier,)
     ).fetchone()[0]
