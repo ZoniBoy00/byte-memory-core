@@ -177,6 +177,26 @@ score =  0.35 × FTS5/TF-IDF relevance
 
 ---
 
+## Changelog
+
+### v2.2.0 — Auto-promote & deduplicate (July 2026)
+- **Auto-promotion** — Working facts with `access_count > 3` are automatically promoted to Episodic tier, preventing loss of important context before TTL expiry
+- **Deduplication** — Before storing a new fact, checks FTS5 + TF-IDF for existing matches. If similarity >80%, updates access_count and importance instead of creating a duplicate
+- **Auto-reindex** — Weekly FTS5 index rebuild via `bmc-maintain` cron, triggered by `.last_reindex` marker file
+- **Bulk store optimisation** — FTS5 rows use batch `executemany` instead of one-at-a-time inserts
+
+### v2.1.0 — Tier moves & local search (July 2026)
+- `bmc_tier_move` tool for manual promote/demote between tiers
+- Multi-source search (BMC + o2b + Honcho)
+- Hybrid FTS5 + TF-IDF ranking with importance scoring
+
+### v2.0.0 — Initial BEAM release
+- Three-tier memory: Working, Episodic, Scratchpad
+- FTS5 full-text search with n-gram TF-IDF fallback
+- Auto-pruning, WAL journaling, importance scoring
+
+---
+
 ## Tests
 
 ```bash
