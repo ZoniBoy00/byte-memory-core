@@ -81,7 +81,33 @@ def maintain() -> str:
             total_purged += excess
             messages.append(f"{tier}: {excess} cap-pruned")
 
+    # Auto-promote Working → Episodic for frequently accessed facts
+    auto_promoted = conn.execute(
+        """UPDATE facts SET tier='episodic', importance=MAX(importance, 0.8)
+           WHERE tier='working' AND access_count > 3
+           RETURNING id"""
+    ).fetchall()
+    if auto_promoted:
+        messages.append(f"auto-promoted {len(auto_promoted)} facts to episodic")
+
     conn.commit()
+
+    # Weekly FTS5 reindex (every 7 days)
+    reindex_marker = HERMES_HOME / "byte_memory_core" / ".last_reindex"
+    reindex_interval = 7 * 24 * 3600
+    now_ts = time.time()
+    if not reindex_marker.exists() or (now_ts - reindex_marker.stat().st_mtime) > reindex_interval:
+        conn.execute("DELETE FROM facts_fts")
+        rows = conn.execute("SELECT id, content FROM facts").fetchall()
+        for row in rows:
+            conn.execute(
+                "INSERT INTO facts_fts (rowid, content) VALUES (?, ?)",
+                (row[0], row[1]),
+            )
+        conn.commit()
+        reindex_marker.parent.mkdir(parents=True, exist_ok=True)
+        reindex_marker.touch()
+        messages.append(f"fts5 reindexed ({len(rows)} facts)")
 
     # VACUUM if we removed significant data (> 10% of rows)
     remaining = conn.execute("SELECT COUNT(*) FROM facts").fetchone()[0]
