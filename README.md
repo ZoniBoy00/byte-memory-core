@@ -179,6 +179,13 @@ score =  0.35 × FTS5/TF-IDF relevance
 
 ## Changelog
 
+### v2.3.0 — Tags & metadata (July 2026)
+- **Tags** — Optional `tags` field per fact (JSON array), e.g. `["project:gzw-tools", "fix", "config"]`
+- **Tag-filtered search** — `bmc_search` accepts a `tags` filter parameter for targeted queries
+- **Metadata dict** — Free-form `metadata` field per fact for extra context (project name, session ID, model used, etc.)
+- **Backward compatible** — Existing facts get empty defaults; all tools continue to work unchanged
+- **DB migration** — Auto-adds `tags` column if upgrading from v2.2.0
+
 ### v2.2.0 — Auto-promote & deduplicate (July 2026)
 - **Auto-promotion** — Working facts with `access_count > 3` are automatically promoted to Episodic tier, preventing loss of important context before TTL expiry
 - **Deduplication** — Before storing a new fact, checks FTS5 + TF-IDF for existing matches. If similarity >80%, updates access_count and importance instead of creating a duplicate
