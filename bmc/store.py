@@ -86,6 +86,8 @@ def _handle_store(args, **kwargs):
     tier = args.get("tier", "working")
     source = args.get("source", "")
     importance = args.get("importance", DEFAULT_IMPORTANCE.get(tier, 0.5))
+    tags = args.get("tags", [])
+    metadata = args.get("metadata", {})
 
     if not facts:
         return json.dumps({"status": "error", "reason": "No facts provided"})
@@ -107,17 +109,17 @@ def _handle_store(args, **kwargs):
             if dup:
                 merged_imp = max(dup["importance"], importance)
                 conn.execute(
-                    "UPDATE facts SET access_count=access_count+1, importance=?, accessed_at=?, source=? WHERE id=?",
-                    (merged_imp, now, source, dup["id"]),
+                    "UPDATE facts SET access_count=access_count+1, importance=?, accessed_at=?, source=?, tags=?, metadata=? WHERE id=?",
+                    (merged_imp, now, source, json.dumps(tags), json.dumps(metadata), dup["id"]),
                 )
                 stored.append({"id": dup["id"], "content": dup["content"], "tier": tier, "dedup": True})
                 continue
 
             # New fact
             cur = conn.execute(
-                "INSERT INTO facts (tier, content, source, importance, created_at, accessed_at) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                (tier, fact, source, importance, now, now),
+                "INSERT INTO facts (tier, content, source, tags, importance, created_at, accessed_at, metadata) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (tier, fact, source, json.dumps(tags), importance, now, now, json.dumps(metadata)),
             )
             fid = cur.lastrowid
             fts5_rows.append((fid, fact))
@@ -162,4 +164,6 @@ def _handle_remember(args, **kwargs):
         "tier": "working",
         "source": args.get("source", "manual"),
         "importance": DEFAULT_IMPORTANCE["working"],
+        "tags": args.get("tags", []),
+        "metadata": args.get("metadata", {}),
     })

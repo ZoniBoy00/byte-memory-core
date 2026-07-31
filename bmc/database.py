@@ -26,6 +26,7 @@ def _init_schema(conn: sqlite3.Connection) -> None:
             tier         TEXT NOT NULL DEFAULT 'working',
             content      TEXT NOT NULL,
             source       TEXT DEFAULT '',
+            tags         TEXT DEFAULT '[]',
             importance   REAL DEFAULT 0.5,
             created_at   REAL NOT NULL,
             accessed_at  REAL NOT NULL DEFAULT 0,
@@ -40,6 +41,12 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         CREATE VIRTUAL TABLE IF NOT EXISTS facts_fts
         USING fts5(content);
     """)
+
+    # Migration: add tags column if missing (v2.2.0 → v2.3.0)
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(facts)").fetchall()}
+    if "tags" not in cols:
+        conn.execute("ALTER TABLE facts ADD COLUMN tags TEXT DEFAULT '[]'")
+
     conn.commit()
 
 

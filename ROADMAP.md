@@ -11,9 +11,9 @@ Goals and plans for upcoming versions. Listed by priority — top to bottom.
 
 ## v2.3.0 — Tags & metadata
 
-- [ ] **Tags** — optional `tags` field per fact, e.g. `["project", "fix", "config"]`
-- [ ] **Tag-filtered search** — `bmc_search` supports a `tags` filter parameter
-- [ ] **Metadata dict** — a free-form `metadata` field for extra context (project name, conversation ID, etc.)
+- [x] **Tags** — optional `tags` field per fact, e.g. `["project", "fix", "config"]`
+- [x] **Tag-filtered search** — `bmc_search` supports a `tags` filter parameter
+- [x] **Metadata dict** — a free-form `metadata` field for extra context (project name, conversation ID, etc.)
 
 ## v2.4.0 — Export / Import
 

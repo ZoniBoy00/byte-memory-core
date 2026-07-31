@@ -113,6 +113,29 @@ def _search_honcho(query: str, limit: int = 5) -> List[dict]:
         return []
 
 
+def _tags_match(fact_tags_json: str, filter_tags: List[str]) -> bool:
+    """Check if a fact's tags intersect with the filter tags.
+
+    Tags are stored as JSON arrays like '["project", "fix"]'.
+    Filter tags use colon-notation for exact match: 'project:gzw-tools'.
+    """
+    if not filter_tags:
+        return True  # No filter = match all
+
+    try:
+        fact_tags = json.loads(fact_tags_json) if fact_tags_json else []
+    except (json.JSONDecodeError, TypeError):
+        fact_tags = []
+
+    if not fact_tags:
+        return False  # Fact has no tags but filter expects some
+
+    for ft in filter_tags:
+        if ft in fact_tags:
+            return True
+    return False
+
+
 def _tfidf_score(
     query_tokens: List[str],
     doc_tokens: List[str],
@@ -185,6 +208,7 @@ def _handle_search(args, **kwargs):
     sources = args.get("sources", ["bmc", "o2b"])
     tiers = args.get("tiers", TIER_ORDER)
     min_score = args.get("min_score", 0.0)
+    tags = args.get("tags", [])
 
     from bmc.database import _get_db
     from bmc.scoring import compute_importance_score, recency_score, access_factor
@@ -209,7 +233,7 @@ def _handle_search(args, **kwargs):
                 if fts5_terms:
                     safe_query = " AND ".join(fts5_terms)
                     fts_rows = conn.execute(
-                        """SELECT f.id, f.tier, f.content, f.source, f.importance,
+                        """SELECT f.id, f.tier, f.content, f.source, f.tags, f.importance,
                                   f.created_at, f.accessed_at, f.access_count, rank
                            FROM facts_fts
                            JOIN facts f ON facts_fts.rowid = f.id
@@ -224,7 +248,7 @@ def _handle_search(args, **kwargs):
 
                 if not fts_rows:
                     fallback = conn.execute(
-                        """SELECT id, tier, content, source, importance,
+                        """SELECT id, tier, content, source, tags, importance,
                                   created_at, accessed_at, access_count
                            FROM facts
                            WHERE tier = ?
@@ -234,6 +258,8 @@ def _handle_search(args, **kwargs):
                     ).fetchall()
 
                     for row in fallback:
+                        if not _tags_match(row["tags"], tags):
+                            continue
                         doc_tokens = tokenize(row["content"])
                         tfidf = _tfidf_score(query_tokens, doc_tokens, idf_cache)
                         if tfidf > 0.05:
@@ -244,16 +270,23 @@ def _handle_search(args, **kwargs):
                             tw = TIER_WEIGHTS.get(tier, 1.0)
                             score = compute_importance_score(f5, rec, tw, acc, row["importance"])
                             if score >= min_score:
+                                try:
+                                    fact_tags = json.loads(row["tags"]) if row["tags"] else []
+                                except (json.JSONDecodeError, TypeError):
+                                    fact_tags = []
                                 all_results.append({
                                     "source": "bmc",
                                     "tier": row["tier"],
                                     "content": row["content"],
+                                    "tags": fact_tags,
                                     "detail": row["source"],
                                     "score": round(score, 4),
                                     "id": row["id"],
                                 })
                 else:
                     for row in fts_rows:
+                        if not _tags_match(row["tags"], tags):
+                            continue
                         fts5_rank = max(0.0, min(1.0, (-(row[8] or 0)) / 10.0 + 0.5))
                         doc_tokens = tokenize(row["content"])
                         tfidf = _tfidf_score(query_tokens, doc_tokens, idf_cache)
@@ -263,10 +296,15 @@ def _handle_search(args, **kwargs):
                         tw = TIER_WEIGHTS.get(tier, 1.0)
                         score = compute_importance_score(max(fts5_rank, tfidf * 0.7), rec, tw, acc, row["importance"])
                         if score >= min_score:
+                            try:
+                                fact_tags = json.loads(row["tags"]) if row["tags"] else []
+                            except (json.JSONDecodeError, TypeError):
+                                fact_tags = []
                             all_results.append({
                                 "source": "bmc",
                                 "tier": row["tier"],
                                 "content": row["content"],
+                                "tags": fact_tags,
                                 "detail": row["source"],
                                 "score": round(score, 4),
                                 "id": row["id"],
