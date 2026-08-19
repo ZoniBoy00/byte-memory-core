@@ -1,11 +1,13 @@
 name: byte-memory-core
-version: 2.3.0
+version: 2.4.0
 description: Local vector-indexed memory with BEAM tiers (Working/Episodic/Scratchpad) — FTS5 search, importance scoring, TF-IDF fallback, and auto-pruning.
 author: "Byte"
 provides_tools:
   - bmc_search
   - bmc_store
   - bmc_remember
+  - bmc_export
+  - bmc_import
   - bmc_forget
   - bmc_status
   - bmc_tier_move

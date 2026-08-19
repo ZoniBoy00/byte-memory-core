@@ -10,19 +10,51 @@ Designed to run as a no_agent Hermes cronjob.
 Outputs a one-line status; empty output = nothing to do.
 """
 
+import json
 import sqlite3
 import time
 import os
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
+
+PLUGIN_ROOT = Path(__file__).resolve().parent.parent
+if str(PLUGIN_ROOT) not in sys.path:
+    sys.path.insert(0, str(PLUGIN_ROOT))
+
+from bmc.manage import _handle_export
 
 HERMES_HOME = Path(os.environ.get("HERMES_HOME", os.path.expanduser("~/.hermes")))
 DB_PATH = HERMES_HOME / "byte_memory_core" / "store.db"
+BACKUP_DIR = HERMES_HOME / "backups" / "bmc"
+BACKUP_RETENTION_DAYS = 14
 
 # TTL hours per tier
 TIER_TTL = {"working": 24, "episodic": 720, "scratchpad": 168}
 # Max facts per tier
 TIER_CAP = {"working": 500, "episodic": 2000, "scratchpad": 300}
+
+
+def _write_daily_backup() -> str:
+    """Write one atomic JSON backup and prune backups beyond retention."""
+    result = json.loads(_handle_export({}))
+    if result.get("status") != "success":
+        raise RuntimeError(result.get("error") or result.get("reason") or "export failed")
+
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    target = BACKUP_DIR / f"bmc-{day}.json"
+    temp = target.with_suffix(".json.tmp")
+    temp.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
+    os.replace(temp, target)
+
+    cutoff = time.time() - BACKUP_RETENTION_DAYS * 86400
+    removed = 0
+    for backup in BACKUP_DIR.glob("bmc-*.json"):
+        if backup != target and backup.stat().st_mtime < cutoff:
+            backup.unlink()
+            removed += 1
+    return f"backup: {target.name}" + (f", removed {removed} old" if removed else "")
 
 
 def maintain() -> str:
@@ -116,6 +148,11 @@ def maintain() -> str:
         messages.append(f"vacuumed ({remaining} remaining)")
 
     conn.close()
+
+    try:
+        messages.append(_write_daily_backup())
+    except Exception as exc:
+        messages.append(f"backup failed: {exc}")
 
     if not messages:
         return ""  # Silent — nothing to report

@@ -15,11 +15,11 @@ Goals and plans for upcoming versions. Listed by priority — top to bottom.
 - [x] **Tag-filtered search** — `bmc_search` supports a `tags` filter parameter
 - [x] **Metadata dict** — a free-form `metadata` field for extra context (project name, conversation ID, etc.)
 
-## v2.4.0 — Export / Import
+## v2.4.0 — Export / Import ✅
 
-- [ ] **`bmc_export`** — export facts as JSON, filterable by tier / tag / query
-- [ ] **`bmc_import`** — import facts from JSON, with dedup check during import
-- [ ] **Automated backup** — integrated into `bmc-maintain` script: daily export to `~/.hermes/backups/bmc/`
+- [x] **`bmc_export`** — export facts as versioned JSON, filterable by tier / tags / content query. (Implemented in `_handle_export`)
+- [x] **`bmc_import`** — validate JSON exports and deduplicate facts during import. (Implemented in `_handle_import`)
+- [x] **Automated backup** — `bmc-maintain` writes an atomic daily export to `~/.hermes/backups/bmc/` and retains 14 days. (Implemented in `_write_daily_backup`)
 
 ## v2.5.0 — O2B archival
 

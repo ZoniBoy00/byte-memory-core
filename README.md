@@ -86,6 +86,32 @@ Single-line save to Working tier for rapid context capture:
 }
 ```
 
+### `bmc_export` — Export facts
+
+Create a versioned JSON export, optionally filtered by tier, tags, or content query:
+
+```json
+{
+  "tier": "episodic",
+  "tags": ["project"],
+  "query": "backup"
+}
+```
+
+The export deliberately omits internal database IDs so it can be restored safely into another BMC database.
+
+### `bmc_import` — Import facts
+
+Import the JSON string or object returned by `bmc_export`. Facts are validated and deduplicated before insertion:
+
+```json
+{
+  "payload": "<bmc_export JSON>"
+}
+```
+
+The result reports `imported`, `deduplicated`, and `errors` counts.
+
 ### `bmc_forget` — Delete
 
 ```json
@@ -179,6 +205,11 @@ score =  0.35 × FTS5/TF-IDF relevance
 
 ## Changelog
 
+### v2.4.0 — Export / Import (August 2026)
+- **`bmc_export`** — Versioned JSON exports with tier, tag, and content filters.
+- **`bmc_import`** — Validated imports with content deduplication and restore statistics.
+- **Automated backups** — `bmc-maintain` writes an atomic daily backup to `~/.hermes/backups/bmc/` and retains the latest 14 days.
+
 ### v2.3.0 — Tags & metadata (July 2026)
 - **Tags** — Optional `tags` field per fact (JSON array), e.g. `["project:gzw-tools", "fix", "config"]`
 - **Tag-filtered search** — `bmc_search` accepts a `tags` filter parameter for targeted queries
@@ -210,7 +241,7 @@ score =  0.35 × FTS5/TF-IDF relevance
 python3 -m pytest tests/ -v
 ```
 
-45 tests covering tokenization, scoring, store, manage, and full integration.
+49 tests covering tokenization, scoring, store, manage, export/import, and full integration.
 
 ---
 

@@ -15,7 +15,14 @@ from bmc.config import TIER_ORDER, TIER_CAPS, TIER_WEIGHTS
 from bmc.database import _get_db, _auto_prune
 from bmc.search import _tfidf_score, _build_idf_cache, _handle_search
 from bmc.store import _handle_store, _handle_remember
-from bmc.manage import _handle_forget, _handle_status, _handle_tier_move, _handle_reindex
+from bmc.manage import (
+    _handle_export,
+    _handle_forget,
+    _handle_import,
+    _handle_status,
+    _handle_tier_move,
+    _handle_reindex,
+)
 
 SCHEMA_SEARCH = {
     "name": "bmc_search",
@@ -78,6 +85,31 @@ SCHEMA_FORGET = {
     },
 }
 
+SCHEMA_EXPORT = {
+    "name": "bmc_export",
+    "description": "Export BMC facts as a versioned JSON document. Filter by tier, tags, or text query.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "tier": {"type": "string", "enum": TIER_ORDER, "description": "Optional tier filter"},
+            "tags": {"type": "array", "items": {"type": "string"}, "description": "Require all listed tags"},
+            "query": {"type": "string", "description": "Optional case-insensitive content filter"},
+        },
+    },
+}
+
+SCHEMA_IMPORT = {
+    "name": "bmc_import",
+    "description": "Import a versioned BMC JSON export with validation and deduplication.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "payload": {"description": "Export JSON object or JSON string"},
+        },
+        "required": ["payload"],
+    },
+}
+
 SCHEMA_STATUS = {
     "name": "bmc_status",
     "description": "Show memory health: facts per tier, average importance, recent entries, database size.",
@@ -109,6 +141,8 @@ def register(ctx):
     ctx.register_tool(name="bmc_search", toolset="byte_memory_core", schema=SCHEMA_SEARCH, handler=_handle_search)
     ctx.register_tool(name="bmc_store", toolset="byte_memory_core", schema=SCHEMA_STORE, handler=_handle_store)
     ctx.register_tool(name="bmc_remember", toolset="byte_memory_core", schema=SCHEMA_REMEMBER, handler=_handle_remember)
+    ctx.register_tool(name="bmc_export", toolset="byte_memory_core", schema=SCHEMA_EXPORT, handler=_handle_export)
+    ctx.register_tool(name="bmc_import", toolset="byte_memory_core", schema=SCHEMA_IMPORT, handler=_handle_import)
     ctx.register_tool(name="bmc_forget", toolset="byte_memory_core", schema=SCHEMA_FORGET, handler=_handle_forget)
     ctx.register_tool(name="bmc_status", toolset="byte_memory_core", schema=SCHEMA_STATUS, handler=_handle_status)
     ctx.register_tool(name="bmc_tier_move", toolset="byte_memory_core", schema=SCHEMA_TIER_MOVE, handler=_handle_tier_move)
