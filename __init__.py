@@ -15,6 +15,7 @@ from bmc.config import TIER_ORDER, TIER_CAPS, TIER_WEIGHTS
 from bmc.database import _get_db, _auto_prune
 from bmc.search import _tfidf_score, _build_idf_cache, _handle_search
 from bmc.store import _handle_store, _handle_remember
+from bmc.archive import _handle_archive
 from bmc.manage import (
     _handle_export,
     _handle_forget,
@@ -134,6 +135,21 @@ SCHEMA_REINDEX = {
     "description": "Rebuild the FTS5 full-text search index. Run after bulk imports or if search results seem stale.",
     "parameters": {"type": "object", "properties": {}},
 }
+SCHEMA_ARCHIVE = {
+    "name": "bmc_archive",
+    "description": "Preview or safely archive eligible Episodic BMC facts to an O2B Markdown vault. Defaults to preview; set apply=true to write files and preserve an archived_to reference in BMC.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "vault": {"type": "string", "description": "O2B vault root. Optional when O2B_VAULT is configured."},
+            "apply": {"type": "boolean", "description": "Write archive files. Defaults to false (preview only)."},
+            "min_access_count": {"type": "integer", "minimum": 0, "default": 5},
+            "min_importance": {"type": "number", "minimum": 0, "maximum": 1},
+            "max_age_days": {"type": "integer", "minimum": 0, "default": 0},
+            "limit": {"type": "integer", "minimum": 1, "maximum": 1000, "default": 100},
+        },
+    },
+}
 
 
 def register(ctx):
@@ -147,3 +163,4 @@ def register(ctx):
     ctx.register_tool(name="bmc_status", toolset="byte_memory_core", schema=SCHEMA_STATUS, handler=_handle_status)
     ctx.register_tool(name="bmc_tier_move", toolset="byte_memory_core", schema=SCHEMA_TIER_MOVE, handler=_handle_tier_move)
     ctx.register_tool(name="bmc_reindex", toolset="byte_memory_core", schema=SCHEMA_REINDEX, handler=_handle_reindex)
+    ctx.register_tool(name="bmc_archive", toolset="byte_memory_core", schema=SCHEMA_ARCHIVE, handler=_handle_archive)

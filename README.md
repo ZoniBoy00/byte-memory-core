@@ -135,6 +135,16 @@ Returns counts per tier, average importance, recent entries, database size.
 
 Rebuilds the FTS5 index. Run after bulk imports.
 
+### `bmc_archive` — Archive to O2B
+
+Preview eligible Episodic facts before writing them to an Open Second Brain vault. Eligibility requires `access_count > 5` and a permanent source (`learning`, `architecture`, `permanent`, or `decision`). Preview is the default:
+
+```json
+{"limit": 25}
+```
+
+Set `apply: true` to write Markdown files below `Brain/Architecture/`, `Brain/Decisions/`, `Brain/Learnings/`, or `Brain/Permanent/`. The action is non-destructive: BMC facts remain stored and receive an `archived_to` metadata reference. Configure the default vault with `O2B_VAULT`; `O2B_ARCHIVE_MIN_IMPORTANCE` and `O2B_ARCHIVE_MAX_AGE_DAYS` provide optional safety thresholds.
+
 ---
 
 ## Example Workflows
@@ -204,6 +214,13 @@ score =  0.35 × FTS5/TF-IDF relevance
 ---
 
 ## Changelog
+
+### v2.5.0 — O2B archival (September 2026)
+- **`bmc_archive`** — Safe preview/apply archival of eligible Episodic facts to an O2B Markdown vault.
+- **Three safety criteria** — Requires `access_count > 5` and a permanent source marker; configurable importance and age thresholds are available.
+- **Source organization** — Writes to source-specific Brain directories and atomically updates files.
+- **Deduplication and references** — Updates similar same-source documents and preserves `o2b://` references in both Markdown frontmatter and BMC metadata.
+- **Non-destructive** — Archive runs never delete the original BMC fact.
 
 ### v2.4.0 — Export / Import (August 2026)
 - **`bmc_export`** — Versioned JSON exports with tier, tag, and content filters.

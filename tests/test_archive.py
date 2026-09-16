@@ -1,5 +1,6 @@
 """Tests for safe O2B archival candidate selection."""
 
+import json
 import sqlite3
 import time
 
@@ -74,3 +75,48 @@ def test_limit_is_applied_before_return():
 
     assert len(result) == 2
     assert [fact["id"] for fact in result] == [1, 2]
+
+
+def test_preview_does_not_write_or_change_metadata(tmp_path):
+    from bmc.archive import archive_facts
+
+    conn = _db()
+    _insert(conn, fid=1)
+    result = archive_facts(conn, tmp_path, apply=False)
+
+    assert result["status"] == "preview"
+    assert result["created"] == 0
+    assert list(tmp_path.rglob("*.md")) == []
+    assert conn.execute("SELECT metadata FROM facts WHERE id=1").fetchone()[0] == "{}"
+
+
+def test_apply_writes_markdown_and_reference(tmp_path):
+    from bmc.archive import archive_facts
+
+    conn = _db()
+    _insert(conn, fid=1, source="architecture", tags='["design"]')
+    result = archive_facts(conn, tmp_path, apply=True)
+
+    assert result["status"] == "applied"
+    assert result["created"] == 1
+    files = list((tmp_path / "Brain" / "Architecture").glob("*.md"))
+    assert len(files) == 1
+    document = files[0].read_text()
+    assert "bmc_id: 1" in document
+    assert "archived_to: o2b://Brain/Architecture/" in document
+    metadata = json.loads(conn.execute("SELECT metadata FROM facts WHERE id=1").fetchone()[0])
+    assert metadata["archived_to"].startswith("o2b://Brain/Architecture/")
+
+
+def test_apply_deduplicates_existing_archive(tmp_path):
+    from bmc.archive import archive_facts
+
+    conn = _db()
+    _insert(conn, fid=1, source="learning")
+    first = archive_facts(conn, tmp_path, apply=True)
+    second = archive_facts(conn, tmp_path, apply=True)
+
+    assert first["created"] == 1
+    assert second["created"] == 0
+    assert second["updated"] == 1
+    assert len(list(tmp_path.rglob("*.md"))) == 1

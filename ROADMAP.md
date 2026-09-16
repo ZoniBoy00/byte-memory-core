@@ -21,15 +21,17 @@ Goals and plans for upcoming versions. Listed by priority — top to bottom.
 - [x] **`bmc_import`** — validate JSON exports and deduplicate facts during import. (Implemented in `_handle_import`)
 - [x] **Automated backup** — `bmc-maintain` writes an atomic daily export to `~/.hermes/backups/bmc/` and retains 14 days. (Implemented in `_write_daily_backup`)
 
-## v2.5.0 — O2B archival (in progress)
+## v2.5.0 — O2B archival (complete)
 
-Archival bridge from BMC → open-second-brain vault. Facts must meet **all three criteria** to qualify: Episodic tier, access_count > 5, and a `source` tag marked for permanence.
+Safe archival bridge from BMC → open-second-brain vault. Facts qualify only when they are Episodic, have `access_count > 5`, and use a permanent source marker.
 
-- [x] **Three-criteria candidate filter** — `bmc.archive.find_archivable_facts` returns only Episodic facts with `access_count > 5` and a permanent source marker (`learning`, `architecture`, `permanent`, `decision`). It also accepts `source:<marker>` tags and supports configurable importance, age, and result limits. No files or facts are modified.
-- [ ] **Archive action and source-tag → o2b directory mapping** — write approved candidates to configurable `/Brain/Architecture/`, `/Brain/Learnings/`, etc. with an explicit apply action.
-- [ ] **Dedup before archive write** — before writing a new learning to o2b, search for existing content on the same topic. If a match is found, update it (bump timestamp, merge wording) instead of creating a duplicate. Prevents the vault from filling with 15 versions of the same insight.
-- [ ] **Archive reference link** — before deletion, the fact keeps a reference like `"archived_to": "o2b://path/to/file.md"`
-- [x] **Configurable threshold** — `config.py` exposes `O2B_ARCHIVE_MIN_IMPORTANCE` and `O2B_ARCHIVE_MAX_AGE_DAYS`; both can be overridden with environment variables.
+- [x] **Three-criteria candidate filter** — strict Episodic, access-count, and permanent-source checks; malformed tags are ignored safely.
+- [x] **Source-tag → O2B directory mapping** — `architecture`, `decision`, `learning`, and `permanent` map to `Brain/Architecture`, `Brain/Decisions`, `Brain/Learnings`, and `Brain/Permanent`.
+- [x] **Dry-run/apply action** — `bmc_archive` previews by default; `apply=true` is required before any Markdown or database write.
+- [x] **Dedup before archive write** — same-source Markdown documents are matched using normalized content and token similarity; existing documents are updated instead of duplicated.
+- [x] **Archive reference link** — applied facts retain `metadata.archived_to` and `metadata.archived_at`, while the Markdown frontmatter contains the same `o2b://` reference.
+- [x] **Configurable threshold** — `O2B_ARCHIVE_MIN_IMPORTANCE`, `O2B_ARCHIVE_MAX_AGE_DAYS`, and `O2B_VAULT` are configurable environment settings; per-call overrides are supported.
+- [x] **Non-destructive by design** — BMC facts are never deleted by the archive action, so references remain recoverable and repeated runs are idempotent.
 
 ## v2.6.0 — User experience
 
