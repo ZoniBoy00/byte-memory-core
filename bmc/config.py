@@ -51,3 +51,8 @@ HONCHO_API = os.environ.get("HONCHO_API_URL", "")
 
 HONCHO_WORKSPACE = os.environ.get("HONCHO_WORKSPACE_ID", "")
 """Honcho workspace ID. Required when HONCHO_API is set."""
+
+# O2B archival safety defaults. Archiving is disabled until a vault is configured.
+O2B_PERMANENT_SOURCES = frozenset({"learning", "architecture", "permanent", "decision"})
+O2B_ARCHIVE_MIN_IMPORTANCE = float(os.environ.get("O2B_ARCHIVE_MIN_IMPORTANCE", "0.0"))
+O2B_ARCHIVE_MAX_AGE_DAYS = int(os.environ.get("O2B_ARCHIVE_MAX_AGE_DAYS", "0"))

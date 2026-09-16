@@ -21,15 +21,15 @@ Goals and plans for upcoming versions. Listed by priority — top to bottom.
 - [x] **`bmc_import`** — validate JSON exports and deduplicate facts during import. (Implemented in `_handle_import`)
 - [x] **Automated backup** — `bmc-maintain` writes an atomic daily export to `~/.hermes/backups/bmc/` and retains 14 days. (Implemented in `_write_daily_backup`)
 
-## v2.5.0 — O2B archival
+## v2.5.0 — O2B archival (in progress)
 
 Archival bridge from BMC → open-second-brain vault. Facts must meet **all three criteria** to qualify: Episodic tier, access_count > 5, and a `source` tag marked for permanence.
 
-- [ ] **Three-criteria archiving filter** — a fact is archived only when: (a) it is in the Episodic tier, (b) it has been re-accessed at least 5 times (access_count > 5), and (c) its `source` is one of the permanent markers (`learning`, `architecture`, `permanent`, `decision`). Prevents one-off high-importance noise from polluting the long-term archive.
-- [ ] **Source-tag → o2b directory mapping** — `source=architecture` writes to `/Brain/Architecture/`, `source=learning` to `/Brain/Learnings/`, etc. Configurable mapping in plugin config, so the o2b vault stays organised without guesswork.
+- [x] **Three-criteria candidate filter** — `bmc.archive.find_archivable_facts` returns only Episodic facts with `access_count > 5` and a permanent source marker (`learning`, `architecture`, `permanent`, `decision`). It also accepts `source:<marker>` tags and supports configurable importance, age, and result limits. No files or facts are modified.
+- [ ] **Archive action and source-tag → o2b directory mapping** — write approved candidates to configurable `/Brain/Architecture/`, `/Brain/Learnings/`, etc. with an explicit apply action.
 - [ ] **Dedup before archive write** — before writing a new learning to o2b, search for existing content on the same topic. If a match is found, update it (bump timestamp, merge wording) instead of creating a duplicate. Prevents the vault from filling with 15 versions of the same insight.
 - [ ] **Archive reference link** — before deletion, the fact keeps a reference like `"archived_to": "o2b://path/to/file.md"`
-- [ ] **Configurable threshold** — `config.py` gets min-importance and max-age settings for archival
+- [x] **Configurable threshold** — `config.py` exposes `O2B_ARCHIVE_MIN_IMPORTANCE` and `O2B_ARCHIVE_MAX_AGE_DAYS`; both can be overridden with environment variables.
 
 ## v2.6.0 — User experience
 
